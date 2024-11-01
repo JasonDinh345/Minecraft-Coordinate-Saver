@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "module": "nodenext",                           // Use Node's module resolution strategy
+        "moduleResolution": "nodenext",                 // Specifies module resolution strategy
+        "target": "ES2020",                             // Specify ECMAScript target version
+        "sourceMap": true,                              // Generate source maps for debugging
+        "outDir": "./dist",   
+        "rootDir": "./src",                            // Output directory for compiled files
+        "allowImportingTsExtensions": false,            // Allow importing .ts files with extensions
+        "noEmit": false,                                // Change to false to emit output files
+        "baseUrl": "./",                               // Base directory to resolve non-relative module names
+        "paths": {
+            "@/*": ["src/*"]                             // Adjust paths as necessary
+        },
+    },
+    
+    "include": ["src/**/*.ts"],                     // Include only server TypeScript files
+    "exclude": ["node_modules"]
+}
