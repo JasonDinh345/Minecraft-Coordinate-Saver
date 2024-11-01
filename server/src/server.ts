@@ -1,5 +1,5 @@
 import express, {Express, Request, Response} from 'express';
-import usersRouter from './routes/users.route';
+import userRouter from './routes/users.route';
 const app: Express = express();
 
 app.use(express.json());
@@ -12,7 +12,7 @@ app.get("/", (req : Request, res: Response)=>{
 /**
  * Router for users Table
  */
-app.use('/users', usersRouter);
+app.use('/user', userRouter);
 /**
  * API port on 4000
  */
