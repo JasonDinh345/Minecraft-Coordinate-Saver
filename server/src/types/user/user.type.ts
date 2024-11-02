@@ -7,8 +7,3 @@
         created_at: Date
     }
 
-    export interface AuthResult{
-        success: boolean;
-        message?: string;
-        user?: User
-    }

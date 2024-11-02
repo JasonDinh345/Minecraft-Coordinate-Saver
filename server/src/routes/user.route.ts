@@ -1,25 +1,35 @@
-import {Router, Request, Response, NextFunction} from 'express';
+import {Router} from 'express';
 import pool from '../utils/db'
-import { QueryResult } from 'pg';
+import {UserModel} from "../models/user.model"
+import { UserController } from '../controllers/user.controller';
+
 const userRouter : Router = Router();
-import bcrypt from "bcrypt";
-type User = {
-    id: number,
-    username: string,
-    email: string,
-    password: string,
-    created_at: Date
-}
+
+const userModel :UserModel = new UserModel(pool)
+const userController : UserController = new UserController(userModel)
 /**
- * Request to get all User Data
+ * GET request to get all users
  */
-userRouter.get('/', async(req :Request, res : Response) =>{
-    try{
-        const result: QueryResult = await pool.query("SELECT * FROM users");
-        res.json(result.rows);
-    }catch(err){
-        console.error("Error has occured when getting all users",err.message)
-    }
-})
+userRouter.get('/', userController.getAllUsers.bind(userController))
+/**
+ * GET request to get a user
+ */
+userRouter.get("/:id", userController.getUserByID.bind(userController))
+/**
+ * GET request to authenticate a user based on given username and password
+ */
+userRouter.get("/login", userController.authenticateUser.bind(userController))
+/**
+ * POST request to create a new user
+ */
+userRouter.post("/", userController.createNewUserreq.bind(userController))
+/**
+ * PATCH request to update a user 
+ */
+userRouter.patch("/:id" ,userController.updateUser.bind(userController))
+/**
+ * DELETE request to delete a user 
+ */
+userRouter.delete("/:id", userController.deleteUser.bind(userController))
 
 export default userRouter;

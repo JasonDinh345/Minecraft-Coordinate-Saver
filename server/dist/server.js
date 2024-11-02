@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const users_route_1 = __importDefault(require("./route/users.route"));
+const user_route_1 = __importDefault(require("./routes/user.route"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 /**
@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
 /**
  * Router for users Table
  */
-app.use('/users', users_route_1.default);
+app.use('/user', user_route_1.default);
 /**
  * API port on 4000
  */
