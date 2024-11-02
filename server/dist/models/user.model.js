@@ -69,9 +69,14 @@ class UserModel {
      * @returns the updated user, null if not found
      */
     async updateUser(id, userData) {
-        const fields = Object.keys(userData).filter(key => key == 'id' || key == 'created_at').map((key, index) => `${key} = $${index + 2}`).join(", ");
-        const keys = [id, Object.keys(userData).filter(key => key == 'id' || key == 'created_at')];
-        const result = await this.pool.query(`UPDATE users SET ${fields} WHERE id = $1 RETURNING *`, keys);
+        const filteredData = Object.fromEntries(Object.entries(userData)
+            .filter(([key, value]) => value !== undefined && value !== null && value !== '' && key !== 'id' && key !== 'created_at'));
+        if (filteredData.password) {
+            filteredData.password = await bcrypt_1.default.hash(filteredData.password, 10);
+        }
+        const fields = Object.keys(filteredData).map((key, index) => `${key} = $${index + 2}`).join(", ");
+        const values = [id, ...Object.values(filteredData)];
+        const result = await this.pool.query(`UPDATE users SET ${fields} WHERE id = $1 RETURNING *`, values);
         return result.rows[0] || null;
     }
     /**

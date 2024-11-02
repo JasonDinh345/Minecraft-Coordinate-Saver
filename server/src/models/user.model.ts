@@ -76,7 +76,7 @@ async updateUser(id: number, userData: Partial<User>): Promise<User>{
     }
     const fields = Object.keys(filteredData).map((key, index)=> `${key} = $${index + 2}`).join(", ");
 
-    const values = [id, Object.values(filteredData)]
+    const values = [id, ...Object.values(filteredData)]
 
     const result = await this.pool.query(`UPDATE users SET ${fields} WHERE id = $1 RETURNING *`, values);
   
