@@ -5,15 +5,17 @@
         "target": "ES2020",                             // Specify ECMAScript target version
         "sourceMap": true,                              // Generate source maps for debugging
         "outDir": "./dist",   
-        "rootDir": "./src",                            // Output directory for compiled files
+        "rootDir": "./",                            // Output directory for compiled files
         "allowImportingTsExtensions": false,            // Allow importing .ts files with extensions
-        "noEmit": false,                                // Change to false to emit output files
+        "noEmit": false,    
+        "esModuleInterop": true,                            // Change to false to emit output files
         "baseUrl": "./",                               // Base directory to resolve non-relative module names
         "paths": {
             "@/*": ["src/*"]                             // Adjust paths as necessary
         },
+        "types": ["node", "jest"]
     },
     
-    "include": ["src/**/*.ts"],                     // Include only server TypeScript files
-    "exclude": ["node_modules"]
+    "include": ["src/**/*.ts", "jest.config.ts"],                     // Include only server TypeScript files
+    "exclude": ["node_modules", "dist"]
 }

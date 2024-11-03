@@ -19,3 +19,5 @@ app.use('/user', userRouter);
 app.listen(4000,()=>{
     console.log("Server running!")
 })
+
+export default app
