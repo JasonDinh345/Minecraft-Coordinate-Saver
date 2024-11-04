@@ -1,5 +1,6 @@
 import express, {Express, Request, Response} from 'express';
 import userRouter from './routes/user.route';
+import { Server } from 'http';
 const app: Express = express();
 
 app.use(express.json());
@@ -16,8 +17,8 @@ app.use('/user', userRouter);
 /**
  * API port on 4000
  */
-app.listen(4000,()=>{
+const server: Server = app.listen(4000,()=>{
     console.log("Server running!")
 })
 
-export default app
+export  {app, server}

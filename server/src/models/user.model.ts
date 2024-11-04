@@ -45,12 +45,16 @@ async getUserByUsername(username :string): Promise<User | null>{
  * @returns the new user, null if an error has occured 
  */
 async createNewUser(userData: Omit<User, 'id' | 'created_at'>): Promise<User | null>{
+    
     if (!userData.username || !userData.password || !userData.email) {
         throw new Error("INVALID_FIELD")
     }
+
     try{
-        const hashedPassword: string = await bcrypt.hash(userData.password, 10);
-        const result = await this.pool.query('INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *', [userData.username, userData.email, hashedPassword])
+        const hashedPassword: string = await bcrypt.hash(userData.password.split(" ").join(""), 10);
+
+        const result = await this.pool.query('INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *', 
+            [userData.username.split(" ").join(""), userData.email.split(" ").join(""), hashedPassword])
         return result.rows[0] || null
     }catch(err){
         if(err.code === '23505'){
@@ -66,21 +70,28 @@ async createNewUser(userData: Omit<User, 'id' | 'created_at'>): Promise<User | n
  * @param userData, fields to be updated 
  * @returns the updated user, null if not found
  */
-async updateUser(id: number, userData: Partial<User>): Promise<User>{
+async updateUser(id: number, userData: Partial<User>): Promise<User | null>{
     const filteredData = Object.fromEntries(
         Object.entries(userData)
             .filter(([key, value]) => value !== undefined && value !== null && value !== '' && key !== 'id' && key !== 'created_at')
     );
+    
     if(filteredData.password){
         filteredData.password = await bcrypt.hash(filteredData.password, 10);
     }
     const fields = Object.keys(filteredData).map((key, index)=> `${key} = $${index + 2}`).join(", ");
 
     const values = [id, ...Object.values(filteredData)]
-
-    const result = await this.pool.query(`UPDATE users SET ${fields} WHERE id = $1 RETURNING *`, values);
-  
-    return result.rows[0] || null; 
+    try{
+        const result = await this.pool.query(`UPDATE users SET ${fields} WHERE id = $1 RETURNING *`, values);
+        return result.rows[0] || null; 
+    }catch(err){
+        if(err.code === '23505'){
+            throw new Error("DUPE_EMAIL")
+        }
+        throw new Error("SERVER_ERROR")
+    }
+    
 }
 /**
  * Deletes given user

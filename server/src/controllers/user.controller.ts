@@ -111,7 +111,16 @@ export class UserController{
             
         }catch(err){
             console.log(err)
-            res.status(500).json({message: `Server error occured while updating user with ID: ${id}`})
+
+            switch(err.message){
+                case "DUPE_EMAIL":
+                    res.status(409).json({message: "Email already taken!"})
+                    break;
+                default:
+                    res.status(500).json({message: `Server error occured while updating user with ID: ${id}`})
+                    break;
+            
+            }
         }
     }
     /**

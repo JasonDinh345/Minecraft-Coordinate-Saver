@@ -1,25 +1,116 @@
 import { describe } from 'node:test'
 import request from 'supertest'
-import app from '../server'; 
+import {app, server} from '../server'; 
+import pool from "../utils/db"
+import {User} from "../types/user/user.type"
+import dotenv from 'dotenv'
 
-describe("Get all users", ()=>{
-    it("should return 200", async()=>{
-        const response = await request(app).get('/user'); 
-        expect(response.status).toBe(200);
-    })
+dotenv.config()
 
-describe("Get a user", ()=>{
-    describe("Given id:1, should return 200", ()=>{
+beforeEach(async () => {
+    
+    await pool.query('BEGIN;');
+});
+  
+afterEach(async () => {
+    await pool.query('ROLLBACK;');
+    
+});
+
+afterAll(async () => {
+    const response = await request(app).get('/user'); 
+    await pool.query(`ALTER SEQUENCE ${process.env.USER_SEQUENCE} RESTART WITH ${response.body.length + 1};`)
+    await pool.end(); 
+    server.close(); 
+});
+  
+
+describe("GET request for users", ()=>{
+    
+    describe("When user db has more than one user", ()=>{
         it("should return 200", async()=>{
-            const response = await request(app).get('/user/1'); 
+            const response = await request(app).get('/user'); 
             expect(response.status).toBe(200);
+            
         })
     })
-    describe("Given id:-1, should return 404", ()=>{
-        it("should return 200", async()=>{
-            const response = await request(app).get('/user/-1'); 
-            expect(response.status).toBe(404);
+    
+    
+    describe("When db is empty", () => {
+        it("should return 404", async () => {
+            await pool.query(`DELETE FROM users;`);
+          const response = await request(app).get('/user');
+          expect(response.status).toBe(404);
+        });
+    })
+
+    
+
+    describe("GET request for a user", ()=>{
+        describe("Given a valid", ()=>{
+            it("should return 200", async()=>{
+                
+                const response = await request(app).get(`/user/${process.env.TEST_USER_ID}`); 
+                expect(response.status).toBe(200);
+            })
         })
+        
+        describe("Given an invalid id", ()=>{
+            it("should return 404", async()=>{
+                const response = await request(app).get('/user/-1'); 
+                expect(response.status).toBe(404);
+            })
+        })
+            
     })
 })
+
+
+describe("POST REQUESTS", ()=>{
+    let user : Omit<User, 'id' | 'created_at'>
+    describe("Given valid user data",()=>{
+        it("should return 201", async ()=>{
+            user = {username: "john45", password: "123", email:"johnissocool345@test.com"}
+            const response = await request(app).post('/user').send(user); 
+                expect(response.status).toBe(201);
+                expect(response.body).toEqual(expect.any(Object));
+        })
+    })
+    describe("Given empty user data", ()=>{
+        it("should return 400", async ()=>{
+            user = {username: " ", password: "", email:""}
+            const response = await request(app).post('/user').send(user); 
+                expect(response.status).toBe(400);
+        })    
+    })
+    describe("Given duplicate email", ()=>{
+        it("should return 409", async ()=>{
+            const user1 : Omit<User, 'id' | 'created_at'> = {username: "john45", password: "123", email:"johnissocool345@test.com"}
+            user = {username: "john45", password: "3456", email:"johnissocool345@test.com"}
+            await request(app).post('/user').send(user1); 
+            const response = await request(app).post('/user').send(user); 
+            expect(response.status).toBe(409);
+        }) 
+    })
+})
+describe("PATCH REQUEST", ()=>{
+    describe("Given valid userdata", ()=>{
+        it("should return 200", async()=>{
+            const response = await request(app).patch(`/user/${process.env.TEST_USER_ID}`).send({ username: "tester", password: "test", email:"email@gmail.com" }); 
+            expect(response.status).toBe(200);
+      
+        })
+    })
+    describe("Given an id and valid user data", ()=>{
+        it("shouldnt change the id", async()=>{
+            const response = await request(app).patch(`/user/${process.env.TEST_USER_ID}`).send({id:4, username: "tester", password: "test", email:"email@gmail.com"}); 
+            expect(response.body.id).toEqual(Number(process.env.TEST_USER_ID));
+        })
+    })
+    describe("Given taken email", ()=>{
+        it("shouldnt change the id", async()=>{
+            const response = await request(app).patch(`/user/${process.env.TEST_USER_ID}`).send({ username: "tester", password: "test", email:process.env.TAKEN_EMAIL}); 
+            expect(response.status).toBe(409);
+        })
+    })
 })
