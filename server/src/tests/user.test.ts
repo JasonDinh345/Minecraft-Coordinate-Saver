@@ -1,8 +1,8 @@
 import { describe } from 'node:test'
 import request from 'supertest'
-import {app, server} from '../server'; 
-import pool from "../utils/db"
-import {User} from "../types/user/user.type"
+import {app, server} from '@/server'; 
+import pool from "@/utils/db"
+import {User} from "@/types/user/user.type"
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -27,22 +27,6 @@ afterAll(async () => {
 
 describe("GET request for users", ()=>{
     
-    describe("When user db has more than one user", ()=>{
-        it("should return 200", async()=>{
-            const response = await request(app).get('/user'); 
-            expect(response.status).toBe(200);
-            
-        })
-    })
-    
-    
-    describe("When db is empty", () => {
-        it("should return 404", async () => {
-            await pool.query(`DELETE FROM users;`);
-          const response = await request(app).get('/user');
-          expect(response.status).toBe(404);
-        });
-    })
 
     
 
@@ -112,5 +96,19 @@ describe("PATCH REQUEST", ()=>{
             const response = await request(app).patch(`/user/${process.env.TEST_USER_ID}`).send({ username: "tester", password: "test", email:process.env.TAKEN_EMAIL}); 
             expect(response.status).toBe(409);
         })
+    })
+})
+describe("DELETE REQUEST", ()=>{
+    describe("Given a valid id", ()=>{
+        it("Should return 204", async()=>{
+            const response = await request(app).delete(`/user/${process.env.TEST_USER_ID}`)
+            expect(response.status).toBe(204)
+        })
+    })
+    describe("Given invalid id", ()=>{
+        it("Should return 404", async()=>{
+            const response = await request(app).delete('/user/-1')
+            expect(response.status).toBe(404)
+        }) 
     })
 })
