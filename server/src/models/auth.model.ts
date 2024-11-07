@@ -22,11 +22,11 @@ export class AuthModel{
      */
     async authenticateUser(userData: Partial<User>): Promise<User>{
         if(!userData.username || !userData.password){
-        throw new Error("INVALID_FIELDS")
+            throw new Error("INVALID_FIELDS")
         }
-        const user = (await this.pool.query("SELECT * FROM users WHERE username = $1", [userData.username])).rows[0] || null;
+        const user = (await this.pool.query("SELECT * FROM users WHERE username = $1", [userData.username])).rows[0];
         if(!user){
-        throw new Error("INVALID_FIELDS")
+            throw new Error("INVALID_USER")
         }
         try{
             if(await bcrypt.compare(userData.password, user.password)){
@@ -35,6 +35,9 @@ export class AuthModel{
             throw new Error("INCORRECT_PASSWORD")
         }catch(err){
             console.error("Authentication error: ", err.message)
+            if(err.message == "INCORRECT_PASSWORD"){
+                throw new Error("INCORRECT_PASSWORD")
+            }
             throw new Error("SERVER_ERROR")
         }
     }
@@ -53,10 +56,9 @@ export class AuthModel{
     async verifyRefreshToken(refreshToken: string): Promise<boolean>{
         if(!refreshToken){
             throw new Error("INVALID_TOKEN")
-        }else if(!(await this.pool.query("SELECT * FROM refresh_tokens WHERE refresh_token = $1", [refreshToken]).rows[0])){
-            return false
         }
-        return true
+        const result = await this.pool.query("SELECT * FROM refresh_tokens WHERE refresh_token = $1", [refreshToken])
+        return result.rows[0] ? true : false
     }
     /**
      * Removes the refresh token from the db

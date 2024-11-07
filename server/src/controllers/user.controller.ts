@@ -34,6 +34,7 @@ export class UserController{
         jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err:Error, user: Partial<User>)=>{
             if(err){
                 res.status(403).json({message:"Token can't be verified"})
+                return;
             }
             req.user = user
             next()
@@ -132,6 +133,7 @@ export class UserController{
             if(hasDeleted){
                 res.status(204).json({message: "Deleted User"})
             }else{
+                
                 res.status(404).json({message:`Couldn't find user with email: ${req.user.email}`})
             }
     

@@ -27,13 +27,27 @@ export class AuthController{
             if(!user){
                 res.status(400).json({message: "Authorization Failed"})
             }
-            const accesstoken = this.generateAccessToken({email: user.email})
+            const accessToken = this.generateAccessToken({email: user.email})
             const refreshToken = jwt.sign({email: user.email}, process.env.REFRESH_TOKEN_SECRET)
             await this.authModel.addRefreshToken(refreshToken)
-            res.status(201).json({accesstoken: accesstoken, refreshToken: refreshToken})
+            res.status(201).json({accessToken: accessToken, refreshToken: refreshToken})
         }catch(err){
             console.error(err)
-            res.status(500).json({message: "Unexpected Server error has occured"})
+            switch(err.message){
+                case "INVALID_FIELDS":
+                    res.status(400).json({message: "Username and password cannot be null"})
+                    break;
+                case "INVALID_USER":
+                    res.status(404).json({message: "User with given username can't be found"})
+                    break;
+                case "INCORRECT_PASSWORD":
+                    res.status(401).json({message: "Invalid password"})
+                    break;
+                default:
+                    res.status(500).json({message: "Unexpected Server error has occured"})
+                    break;
+            }
+           
         }
         
     }
@@ -58,7 +72,9 @@ export class AuthController{
                 res.status(403).json({message:"Refresh token is not valid"})
             }
         }catch(err){
+            console.error(err)
             switch(err.message){
+                
                 case 'INVALID_TOKEN':
                     res.status(401).json({message: "Refresh token can't be null or undefined"})
                     break;
@@ -87,8 +103,8 @@ export class AuthController{
     }
     /**
      * Generates an access token based on the user's email
-     * @param user 
-     * @returns 
+     * @param user, user with only email
+     * @returns an new access token
      */
     generateAccessToken(user: Partial<User>): string{
         return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '15min'})

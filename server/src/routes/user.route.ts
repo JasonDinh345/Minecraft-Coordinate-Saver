@@ -21,10 +21,10 @@ userRouter.post("/", userController.createNewUser.bind(userController))
 /**
  * PATCH request to update a user 
  */
-userRouter.patch("/:id" ,userController.authenticateToken.bind(userController), userController.updateUser.bind(userController))
+userRouter.patch("/" ,userController.authenticateToken.bind(userController), userController.updateUser.bind(userController))
 /**
  * DELETE request to delete a user 
  */
-userRouter.delete("/:id", userController.authenticateToken.bind(userController), userController.deleteUser.bind(userController))
+userRouter.delete("/", userController.authenticateToken.bind(userController), userController.deleteUser.bind(userController))
 
 export default userRouter;
