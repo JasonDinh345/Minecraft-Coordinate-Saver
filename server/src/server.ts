@@ -1,6 +1,7 @@
 import express, {Express, Request, Response} from 'express';
 import userRouter from './routes/user.route';
 import { Server } from 'http';
+import worldRouter from './routes/world.route';
 const app: Express = express();
 
 app.use(express.json());
@@ -14,6 +15,7 @@ app.get("/", (req : Request, res: Response)=>{
  * Router for users Table
  */
 app.use('/user', userRouter);
+app.use('/world', worldRouter);
 /**
  * API port on 4000
  */
