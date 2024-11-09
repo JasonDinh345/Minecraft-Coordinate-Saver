@@ -1,5 +1,5 @@
 import {Pool} from 'pg'
-import {UserWorldRoles, World, WorldCoords} from '@/types/world/world.type'
+import {UserWorldRoles, World, WorldCoords, UserRoleQuery} from '@/types/world/world.type'
 
 /**
  * Model for World Route
@@ -68,6 +68,7 @@ export class WorldModel{
             const result = await this.pool.query("INSERT INTO worlds (name, seed) VALUES ($1, $2) RETURNING *;", [worldData.name, worldData.seed])
             return result.rows[0] || null
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
         
@@ -75,26 +76,35 @@ export class WorldModel{
     /**
      * Adds a user, world, and role relationship to DB
      * @param world_id fields relating to a world
-     * @param userWorldRoles 
-     * @returns 
+     * @param userRoleQuery, email of user and role name
+     * @returns the user query if successful
      */
-    async addUserToWorld(world_id: number, userWorldRoles: Omit<UserWorldRoles, 'world_id'>): Promise<UserWorldRoles>{
-        if(Object.values(userWorldRoles).includes(null)){
-            throw new Error("NULL_IDS")
+    async addUserToWorld(world_id: number, userRoleQuery: UserRoleQuery): Promise<UserRoleQuery>{
+         const userRoleQueryValues  = Object.values(userRoleQuery)
+        if(userRoleQueryValues.includes(null) || userRoleQueryValues.includes(undefined) || userRoleQueryValues.includes("")){
+            throw new Error("INVALID_FIELDS")
         }
         try{
-            const result = await this.pool.query("INSERT INTO user_world_roles (user_id, world_id, role_id) VALUES ($1, $2, $3) RETURNING *;", 
-                [userWorldRoles.user_id, 
+            const result = await this.pool.query(`INSERT INTO user_world_roles (user_id, world_id, role_id) 
+            VALUES ((SELECT id FROM users WHERE email = $1), $2, (SELECT role_id FROM roles WHERE role_name = $3))
+            RETURNING *;`,
+                [userRoleQuery.user_email,
                 world_id,
-                userWorldRoles.role_id])
-            return result.rows[0] || null
+                userRoleQuery.role_name])
+            return result.rows[0] ? {user_email : userRoleQuery.user_email, role_name:userRoleQuery.role_name} : null
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
         
     }
 
-   
+    /**
+     * Adds a coordninate, world relationship into the db
+     * @param world_id number relating to a world
+     * @param coordData, coordnaites to a world with a name
+     * @returns newly added coords, null if id not found
+     */
     async addNewCoordToWorld(world_id: number, coordData: Omit<WorldCoords, 'id'>):Promise<WorldCoords>{
         if(!(Object.values(Object.fromEntries(Object.entries(coordData).filter(([key]) => key !== "z_coord"))).every(value => value !== null && value !== undefined))){
             throw new Error("INVALID_FIELDS")
@@ -112,9 +122,16 @@ export class WorldModel{
             }
             return null;
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }
+    /**
+     * Updates world data in db
+     * @param world_id number relating to a world 
+     * @param worldData updated fields
+     * @returns Updated world data, null if id not found
+     */
     async updateWorldData(world_id: number, worldData : Partial<World>): Promise<World>{
         const filteredData = Object.fromEntries(
             Object.entries(worldData)
@@ -129,14 +146,24 @@ export class WorldModel{
         }
         
     }
-    async updateUserRole(world_id: number, updatedUserWorldRoles: {email: string, role: string}):Promise<UserWorldRoles>{
-        if(Object.values(updatedUserWorldRoles).includes(null)){
-            throw new Error("NULL_IDS")
+    /**
+     * Updates user's role in a world
+     * @param world_id number relating to a world 
+     * @param userRoleQuery contains the email of the user and the updated role
+     * @returns the email of the user and the updated role, null if not found
+     */
+    async updateUserRole(world_id: number, userRoleQuery: UserRoleQuery):Promise<UserWorldRoles>{
+        const userRoleQueryValues  = Object.values(userRoleQuery)
+        if(userRoleQueryValues.includes(null) || userRoleQueryValues.includes(undefined) || userRoleQueryValues.includes("")){
+            throw new Error("INVALID_FIELDS")
         }
         try{
-            const result = await this.pool.query("UPDATE user_world_roles SET role_id = roles.role_id FROM users, roles WHERE user_world_roles.user_id = users.id AND users.email = $1 AND roles.role_name = $2 AND user_world_roles.world_id = $3 RETURNING *", 
-                [updatedUserWorldRoles.email,
-                updatedUserWorldRoles.role,
+            const result = await this.pool.query("UPDATE user_world_roles SET role_id = roles.role_id FROM users, roles ",
+                "WHERE user_world_roles.user_id = users.id ",
+                "AND users.email = $1 AND roles.role_name = $2 ",
+                "AND user_world_roles.world_id = $3 RETURNING *", 
+                [userRoleQuery.user_email,
+                    userRoleQuery.role_name,
                 world_id])
             return result.rows[0] || null
         }catch(err){
@@ -144,6 +171,12 @@ export class WorldModel{
             throw new Error("SERVER_ERROR")
         }
     }
+    /**
+     * Updates the coordinates from a world
+     * @param world_coord_id id relating to coords
+     * @param updateCoords updated fields for coords
+     * @returns The updated coords, null if not found
+     */
     async updateCoords(world_coord_id: number, updateCoords: Partial<WorldCoords>): Promise<WorldCoords>{
         const filteredData = Object.fromEntries(
             Object.entries(updateCoords)
@@ -153,33 +186,54 @@ export class WorldModel{
             const result = await this.pool.query(`UPDATE worlds SET ${fields} WHERE world_coord_id = $1 RETURNING *;`, [world_coord_id, ...Object.values(filteredData)])
             return result.rows[0] || null
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }
+    /**
+     * Deletes a world from the db
+     * @param world_id id relating to a world
+     * @returns A boolean if the world has been deleted or not
+     */
     async deleteWorld(world_id: number): Promise<boolean>{
         try{
-            const result = await this.pool.query("DELETE FROM worlds WHERE id = $1;", [world_id])
+            const result = await this.pool.query("DELETE FROM worlds WHERE id = $1 RETURNING *;", [world_id])
             return result.rowCount > 0;
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }
-    async removeUserFromWorld(world_id: number, userWorldRoles: UserWorldRoles):  Promise<boolean>{
-        if(userWorldRoles.role_id == 1){
+    /**
+     * Removes a user from a world 
+     * @param world_id id relating to a world
+     * @param userWorldRoles user, role,
+     * @returns A boolean if the user has been removed or not
+     */
+    async removeUserFromWorld(world_id: number, userRoleQuery: UserRoleQuery):  Promise<boolean>{
+        if(userRoleQuery.role_name == "ADMIN"){
             throw new Error("CANT_REMOVE_ADMIN")
         }
         try{
-            const result = await this.pool.query("DELETE FROM user_world_roles WHERE world_id = $1 AND user_id = $2;", [world_id, userWorldRoles.user_id])
+            const result = await this.pool.query("DELETE FROM user_world_roles WHERE world_id = $1 AND user_id = (SELECT u.id from users WHERE u.user_email = $2) RETURNING *;", 
+                [world_id, userRoleQuery.user_email])
             return result.rowCount > 0;
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }
+    /**
+     * Removes coords from a world
+     * @param world_coord_id id relating to coords
+     * @returns A boolean if the coords has been removed or not
+     */
     async deleteCoords(world_coord_id: number){
         try{
-            const result = await this.pool.query("DELETE FROM world_coords WHERE world_coord_id = $1", [world_coord_id ])
+            const result = await this.pool.query("DELETE FROM world_coords WHERE world_coord_id = $1 RETURNING *", [world_coord_id ])
             return result.rowCount > 0;
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }

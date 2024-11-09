@@ -1,13 +1,24 @@
 import { Request, Response } from 'express';
-import {UserWorldRoles, World, WorldCoords} from '@/types/world/world.type'
+import {UserWorldRoles, World, WorldCoords, UserRoleQuery} from '@/types/world/world.type'
 import { WorldModel } from '@/models/world.model';
-
+/**
+ * Controller for World Route
+ */
 export class WorldController{
+    /** Connection to model */
     private worldModel : WorldModel
-
+    /**
+     * Construction of WorldController
+     * @param worldModel connection to db
+     */
     constructor(worldModel: WorldModel){
         this.worldModel = worldModel
     }
+    /**
+     * Sends a given world 
+     * @param req Contains id from the url relating to a world
+     * @param res Sends a given world, unless an error occured
+     */
     async getWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -23,6 +34,11 @@ export class WorldController{
             res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
         }
     }
+    /**
+     * Sends all users related to a world
+     * @param req Contains id from the url relating to a world
+     * @param res Sends all users in the given world, unless and error occured
+     */
     async getAllUsersInAWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -38,6 +54,11 @@ export class WorldController{
         }
 
     }
+    /**
+     * Sends all coords related to a world 
+     * @param req Contains id from the url relating to a world
+     * @param res Sends all coords related to a world, unless and error occured
+     */
     async getAllCoordsInAWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -51,6 +72,11 @@ export class WorldController{
             res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
         }
     }
+    /**
+     * Sends the newly created world 
+     * @param req Fields relating to a world
+     * @param res Sends the newly created world, unless an error occured
+     */
     async createNewWorld(req : Request, res: Response): Promise<void>{
         try{
             const world : World = await this.worldModel.createNewWorld(req.body)
@@ -71,11 +97,16 @@ export class WorldController{
             
         }
     }
+    /**
+     * Sends a message relating to the result of the query
+     * @param req Contains id from the url relating to a world, and fields containing user email and the role
+     * @param res Sends a message relating to the result of the query
+     */
     async addUserToWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
-            const userWorldRoles : UserWorldRoles = await this.worldModel.addUserToWorld(world_id, req.body)
-            if(userWorldRoles){
+            const userRoleQuery : UserRoleQuery = await this.worldModel.addUserToWorld(world_id, req.body)
+            if(userRoleQuery){
                 res.status(201).json({message: "Successfull added user to server!"})
             }else{
                 res.status(500).json({message: `Unexpected server error while adding user to world`})
@@ -94,6 +125,11 @@ export class WorldController{
             } 
         }
    }
+   /**
+    * Sends the newly added coords
+    * @param req Contains id from the url relating to a world, and fields containing the coord data
+    * @param res Sends the newly added coords, unless an error occurs
+    */
     async addNewCoordToWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -117,6 +153,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends the updated world
+     * @param req Contains id from the url relating to a world, and updated fields for the world
+     * @param res Sends the updated world, unless an error occurs
+     */
     async updateWorldData(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -134,6 +175,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends the updated user, role relation in a given world
+     * @param req Contains id from the url relating to a world, and field containing the updated role
+     * @param res Sends the updated user, role relation in a given world, unless and error occurs
+     */
     async updateUserRole(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -159,6 +205,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends the updated coords from a given world
+     * @param req Contains id from the url relating to coords, and fields containing the updated coordinates
+     * @param res Sends the updated coords from a given world, unless and error occured
+     */
     async updateCoords(req : Request, res: Response): Promise<void>{
         const world_coord_id = parseInt(req.params.id)
         try{
@@ -176,6 +227,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends a message of the result of the deletion
+     * @param req Contains id from the url relating to a world
+     * @param res Sends a message of the result of the deletion
+     */
     async deleteWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -194,6 +250,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends a message of the result of the deletion
+     * @param req Contains id from the url relating to a world, and fields containing the user email and role
+     * @param res Sends a message of the result of the deletion
+     */
     async removeUserFromWorld(req : Request, res: Response): Promise<void>{
         const world_id = parseInt(req.params.id)
         try{
@@ -213,6 +274,11 @@ export class WorldController{
             } 
         }
     }
+    /**
+     * Sends a message of the result of the deletion
+     * @param req Contains id from the url relating to coords
+     * @param res Sends a message of the result of the deletion
+     */
     async deleteCoords(req : Request, res: Response): Promise<void>{
         const world_coord_id = parseInt(req.params.id)
         try{

@@ -14,7 +14,7 @@ dotenv.config()
  * Prevents changes to db
  */
 beforeAll(()=>{
-    server = app.listen(5000)
+    server = app.listen(6000)
 })
 beforeEach(async () => {
     
