@@ -147,7 +147,9 @@ export class WorldController{
             if(err.code == 23503){
                 res.status(404).json(`Couldn't find a user, world, or role with given IDs`)
             }
+            console.log(err)
             switch(err.message){
+                
                 case "NULL_IDS":
                     res.status(400).json({message: "IDs must be not null"})
                     break;

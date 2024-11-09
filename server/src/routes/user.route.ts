@@ -15,6 +15,11 @@ const userController : UserController = new UserController(userModel)
 userRouter.get("/", userController.authenticateToken.bind(userController), userController.getUser.bind(userController))
 
 /**
+* GET request to get a user using JWT to validate the accessToken
+*/
+userRouter.get("/world/:id", userController.getAllWorldsMatchingUser.bind(userController))
+
+/**
  * POST request to create a new user
  */
 userRouter.post("/", userController.createNewUser.bind(userController))

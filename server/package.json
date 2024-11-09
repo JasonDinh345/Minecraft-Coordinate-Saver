@@ -5,8 +5,8 @@
   "scripts": {
     "test": "jest --coverage",
     "build": "tsc && tsc-alias --project tsconfig.json",
-    "start": "concurrently \"node dist/src/server.js\" \"node dist/src/authServer.js\"",
-    "dev": "nodemon dist/server.js"
+    "start": "node dist/src/index.js",
+    "dev": "nodemon dist/index.js"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,6 @@
 import {Pool} from 'pg'
 import {User} from '@/types/user/user.type'
+import {World} from '@/types/world/world.type'
 import bcrypt from 'bcrypt'
 /**
  * Model for Users
@@ -29,6 +30,22 @@ async getUserByEmail(email :string): Promise<User | null>{
  * @param userData, fields to create a new user
  * @returns the new user, null if an error has occured 
  */
+async getAllWorldsMatchingUser(user_id :number): Promise<World[]>{
+    
+    try{
+        const result = await this.pool.query("SELECT w.id, w.name, w.created_at, w.last_updated, w.seed " +  
+            "FROM user_world_roles usr " +
+            "JOIN worlds w ON usr.world_id = w.id " +
+            "JOIN users u ON usr.user_id = u.id WHERE u.id = $1;", [user_id])
+        if (result.rows.length === 0) {
+            return null
+        }
+        return result.rows
+    }catch(err){
+        throw new Error("SERVER_ERROR")
+    }
+    
+}
 async createNewUser(userData: Omit<User, 'id' | 'created_at'>): Promise<User | null>{
     
     if (!userData.username || !userData.password || !userData.email) {

@@ -20,5 +20,5 @@ export interface WorldCoords{
     y_coord: number
     z_coord? : number
     name: string
-    description: string
+    description?: string
 }

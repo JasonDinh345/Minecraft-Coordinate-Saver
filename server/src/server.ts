@@ -16,12 +16,6 @@ app.get("/", (req : Request, res: Response)=>{
  */
 app.use('/user', userRouter);
 app.use('/world', worldRouter);
-/**
- * API port on 4000
- */
-const server: Server = app.listen(4000,()=>{
-    console.log("Server running!")
-})
 
 
-export  {app, server}
+export {app}

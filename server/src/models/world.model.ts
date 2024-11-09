@@ -1,29 +1,33 @@
 import {Pool} from 'pg'
 import {UserWorldRoles, World, WorldCoords} from '@/types/world/world.type'
 
-
+/**
+ * Model for World Route
+ */
 export class WorldModel{
+    /** Connection to DB */
     private pool:Pool
-
+    /**
+     * Constructs WorldModel
+     * @param pool connection to DB
+     */
     constructor(pool : Pool){
         this.pool = pool
     }
+    /**
+     * Given an id, it finds a given world
+     * @param id number relating to a world
+     * @returns the world if found, null if else
+     */
     async getWorld(id : number): Promise<World>{
         const result = await this.pool.query("SELECT * FROM worlds WHERE id = $1;", [id])
         return result.rows[0] || null
     }
-    async getAllWorldsMatchingUser(user_id :number): Promise<World[]>{
-        try{
-            const result = await this.pool.query("SELECT w.id, w.name, w.created_at, w.last_updated, w.seed " +  
-                "FROM user_world_roles usr " +
-                "JOIN worlds w ON usr.world_id = w.id " +
-                "JOIN users u ON usr.user_id = u.id WHERE u.id = $1;", [user_id])
-            return result.rows || null 
-        }catch(err){
-            throw new Error("SERVER_ERROR")
-        }
-        
-    }
+    /**
+     * Gets all users in a world
+     * @param world_id number relating to a world
+     * @returns an array of users
+     */
     async getAllUsersInAWorld(world_id: number):Promise<{ username: string, role_name: string }[]>{
         try{
             const result = await this.pool.query("SELECT u.username, r.role_name " +
@@ -38,6 +42,11 @@ export class WorldModel{
         }
         
     }
+    /**
+     * Gets all coords in a world
+     * @param world_id number relating to a world
+     * @returns an array of coords
+     */
     async getAllCoordsInAWorld(world_id: number):Promise<WorldCoords[]>{
         try{
             const result = await this.pool.query("SELECT * FROM world_coords WHERE world_id = $1", [world_id])
@@ -46,6 +55,11 @@ export class WorldModel{
             throw new Error("SERVER_ERROR")
         }
     }
+    /**
+     * Inserts new world into DB
+     * @param worldData fields relating to a world
+     * @returns the newly created world if successful
+     */
     async createNewWorld(worldData: Omit<World, 'created_at' | 'last_updated'>): Promise<World>{
         if(!worldData || !worldData.name){
             throw new Error("INVALID_FIELD")
@@ -58,6 +72,12 @@ export class WorldModel{
         }
         
     }
+    /**
+     * Adds a user, world, and role relationship to DB
+     * @param world_id fields relating to a world
+     * @param userWorldRoles 
+     * @returns 
+     */
     async addUserToWorld(world_id: number, userWorldRoles: Omit<UserWorldRoles, 'world_id'>): Promise<UserWorldRoles>{
         if(Object.values(userWorldRoles).includes(null)){
             throw new Error("NULL_IDS")
@@ -109,17 +129,18 @@ export class WorldModel{
         }
         
     }
-    async updateUserRole(world_id: number, updatedUserWorldRoles: UserWorldRoles):Promise<UserWorldRoles>{
+    async updateUserRole(world_id: number, updatedUserWorldRoles: {email: string, role: string}):Promise<UserWorldRoles>{
         if(Object.values(updatedUserWorldRoles).includes(null)){
             throw new Error("NULL_IDS")
         }
         try{
-            const result = await this.pool.query("UPDATE worlds SET role_id = $1 WHERE world_id = $2 AND user_id = $3 RETURNING *", 
-                [updatedUserWorldRoles.role_id,
-                world_id,
-                updatedUserWorldRoles.user_id])
+            const result = await this.pool.query("UPDATE user_world_roles SET role_id = roles.role_id FROM users, roles WHERE user_world_roles.user_id = users.id AND users.email = $1 AND roles.role_name = $2 AND user_world_roles.world_id = $3 RETURNING *", 
+                [updatedUserWorldRoles.email,
+                updatedUserWorldRoles.role,
+                world_id])
             return result.rows[0] || null
         }catch(err){
+            console.log(err)
             throw new Error("SERVER_ERROR")
         }
     }

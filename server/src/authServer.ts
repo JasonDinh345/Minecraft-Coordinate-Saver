@@ -14,12 +14,6 @@ authApp.get("/", (req : Request, res: Response)=>{
  * Router for users Table
  */
 authApp.use('/auth', authRouter);
-/**
- * API port on 5000
- */
 
-const authServer: Server = authApp.listen(5000 ,()=>{
-    console.log("Auth Server running!")
-})
 
-export  {authApp, authServer}
+export  {authApp}

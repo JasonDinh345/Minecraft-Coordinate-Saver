@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { UserModel } from '@/models/user.model';
 import { User } from '@/types/user/user.type';
+import {World} from '@/types/world/world.type'
 import jwt from 'jsonwebtoken'
 /**
  * Controller for user
@@ -61,7 +62,24 @@ export class UserController{
          
         }
     }
-    
+    async getAllWorldsMatchingUser(req:Request, res: Response): Promise<void>{
+        const id = parseInt(req.params.id)   
+        try{
+            const worlds: World[] | null = await this.userModel.getAllWorldsMatchingUser(id)
+            if(!worlds){
+                res.status(404).json({message:`Couldn't find user with ID: ${id}`})
+                
+            }else{
+                res.status(200).json(worlds)
+            }
+        }catch(err){
+            switch(err.message){
+                default:
+                    res.status(500).json({message: "Unexpected server error has occured!"})
+                    break;
+            }
+        }
+    }
     /**
      * Inserts a new user into the DB
      * @param req, Request from user/admin input with the given fields
