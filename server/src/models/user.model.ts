@@ -16,9 +16,9 @@ export class UserModel{
     }
 
 /**
- * Finds user with given username
- * @param username, username relating to desired user
- * @returns the user with the given id, null if not found
+ * Finds user with given email
+ * @param email, email relating to desired user
+ * @returns the user with the given email, null if not found
  */
 async getUserByEmail(email :string): Promise<User | null>{
     const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -26,9 +26,9 @@ async getUserByEmail(email :string): Promise<User | null>{
 }
 
 /**
- * Inserts a new user into the DB
- * @param userData, fields to create a new user
- * @returns the new user, null if an error has occured 
+ * Finds all world that a user is apart of
+ * @param user_id number related to a user
+ * @returns an array of worlds that the user is apart of 
  */
 async getAllWorldsMatchingUser(user_id :number): Promise<World[]>{
     
@@ -46,6 +46,11 @@ async getAllWorldsMatchingUser(user_id :number): Promise<World[]>{
     }
     
 }
+/**
+ * Inserts a new user into the DB
+ * @param userData, fields to create a new user
+ * @returns the new user, null if an error has occured 
+ */
 async createNewUser(userData: Omit<User, 'id' | 'created_at'>): Promise<User | null>{
     
     if (!userData.username || !userData.password || !userData.email) {
