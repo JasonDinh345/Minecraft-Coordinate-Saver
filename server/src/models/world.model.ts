@@ -1,5 +1,6 @@
 import {Pool} from 'pg'
 import {UserWorldRoles, World, WorldCoords, UserRoleQuery} from '@/types/world/world.type'
+import { error } from 'node:console'
 
 /**
  * Model for World Route
@@ -29,17 +30,21 @@ export class WorldModel{
      * @returns an array of users
      */
     async getAllUsersInAWorld(world_id: number):Promise<{ username: string, role_name: string }[]>{
+        let result;
         try{
-            const result = await this.pool.query("SELECT u.username, r.role_name " +
+             result = await this.pool.query("SELECT u.username, r.role_name " +
                 "FROM user_world_roles usr " +
                 "JOIN users u on usr.user_id = u.id " +
                 "JOIN roles r on usr.role_id = r.role_id " +
                 "JOIN worlds w on usr.world_id = w.id WHERE w.id = $1;", [world_id])
-            return result.rows || null 
         }catch(err){
             console.log(err)
             throw new Error("SERVER_ERROR")
         }
+        if(result.rowCount === 0){
+            throw new Error("INVALID_ID")
+        }
+        return result.rows
         
     }
     /**
@@ -48,9 +53,13 @@ export class WorldModel{
      * @returns an array of coords
      */
     async getAllCoordsInAWorld(world_id: number):Promise<WorldCoords[]>{
+        const checkIdResult = await this.pool.query("SELECT 1 FROM worlds WHERE id = $1", [world_id]);
+        if (checkIdResult.rowCount === 0) {
+            throw new Error("INVALID_ID");
+        }
         try{
             const result = await this.pool.query("SELECT * FROM world_coords WHERE world_id = $1", [world_id])
-            return result.rows || null
+            return result.rows 
         }catch(err){
             throw new Error("SERVER_ERROR")
         }
@@ -85,16 +94,25 @@ export class WorldModel{
             throw new Error("INVALID_FIELDS")
         }
         try{
+            const userResult = await this.pool.query("SELECT id FROM users WHERE email = $1", [userRoleQuery.user_email]);
+            if (userResult.rowCount === 0) {
+                throw new Error("USER_NOT_FOUND");
+            }
+            const roleResult = await this.pool.query("SELECT role_id FROM roles WHERE role_name = $1", [userRoleQuery.role_name]);
+            if (roleResult.rowCount === 0) {
+                throw new Error("ROLE_NOT_FOUND");
+            }
             const result = await this.pool.query(`INSERT INTO user_world_roles (user_id, world_id, role_id) 
-            VALUES ((SELECT id FROM users WHERE email = $1), $2, (SELECT role_id FROM roles WHERE role_name = $3))
-            RETURNING *;`,
-                [userRoleQuery.user_email,
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, world_id, role_id) DO NOTHING
+             RETURNING *;`,
+                [userResult.rows[0].id,
                 world_id,
-                userRoleQuery.role_name])
+                roleResult.rows[0].role_id])
             return result.rows[0] ? {user_email : userRoleQuery.user_email, role_name:userRoleQuery.role_name} : null
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            throw new Error(err.message)
         }
         
     }
@@ -106,16 +124,21 @@ export class WorldModel{
      * @returns newly added coords, null if id not found
      */
     async addNewCoordToWorld(world_id: number, coordData: Omit<WorldCoords, 'id'>):Promise<WorldCoords>{
-        if(!(Object.values(Object.fromEntries(Object.entries(coordData).filter(([key]) => key !== "z_coord"))).every(value => value !== null && value !== undefined))){
+        if(!(Object.values(Object.fromEntries(Object.entries(coordData).filter(([key]) => key !== "z_coord")))
+            .every(value => value !== null && value !== undefined && value !== "") )){
             throw new Error("INVALID_FIELDS")
         }
         try{
-            const result = await this.pool.query(`INSERT INTO world_coords (world_id, name, x_coord, y_coord, z_coord) VALUES ($1, $2, $3, $4, $5) RETURNING *;`,
+            const result = await this.pool.query(`INSERT INTO world_coords (world_id, name, x_coord, y_coord, z_coord, description) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
+                ON CONFLICT (world_id, name) DO NOTHING
+                RETURNING *;`,
                 [world_id,
                 coordData.name,
                 coordData.x_coord,
                 coordData.y_coord, 
-                coordData.z_coord || null ])
+                coordData.z_coord || null,
+                coordData.description || null])
             if(result.rows[0]){
                 await this.updateWorldData(world_id, {})
                 return result.rows[0]
@@ -123,7 +146,10 @@ export class WorldModel{
             return null;
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            if(err.code === '23503'){
+                throw new Error("INVALID_ID")
+            }
+            throw new Error(err.message)
         }
     }
     /**
@@ -137,12 +163,14 @@ export class WorldModel{
             Object.entries(worldData)
             .filter(([key, value])=> value !== undefined && value !== null && value !== '' && key !== 'id' && key !== 'created_at' && key !== 'last_updated'))
         const fields = Object.keys(filteredData).map((key, index)=> `${key} = $${index + 2}`).join(", ") ;
+        const fieldsWithLastUpdated = fields ? `${fields}, last_updated = CURRENT_TIMESTAMP` : `last_updated = CURRENT_TIMESTAMP`;
+        console.log(fields)
         try{
-            const result = await this.pool.query(`UPDATE worlds SET ${fields}, last_updated = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *;`, [world_id, ...Object.values(filteredData)])
+            const result = await this.pool.query(`UPDATE worlds SET ${fieldsWithLastUpdated} WHERE id = $1 RETURNING *;`, [world_id, ...Object.values(filteredData)])
             return result.rows[0] || null
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            throw new Error(err.message)
         }
         
     }
@@ -158,17 +186,26 @@ export class WorldModel{
             throw new Error("INVALID_FIELDS")
         }
         try{
-            const result = await this.pool.query("UPDATE user_world_roles SET role_id = roles.role_id FROM users, roles ",
-                "WHERE user_world_roles.user_id = users.id ",
-                "AND users.email = $1 AND roles.role_name = $2 ",
-                "AND user_world_roles.world_id = $3 RETURNING *", 
-                [userRoleQuery.user_email,
-                    userRoleQuery.role_name,
+            const userResult = await this.pool.query("SELECT id FROM users WHERE email = $1", [userRoleQuery.user_email]);
+            if (userResult.rowCount === 0) {
+                throw new Error("USER_NOT_FOUND");
+            }
+            const roleResult = await this.pool.query("SELECT role_id FROM roles WHERE role_name = $1", [userRoleQuery.role_name]);
+            if (roleResult.rowCount === 0) {
+                throw new Error("ROLE_NOT_FOUND");
+            }
+            const result = await this.pool.query(`UPDATE user_world_roles 
+                SET role_id = $1
+                WHERE user_world_roles.user_id = $2 AND user_world_roles.world_id = $3 
+                RETURNING *;`,
+                [roleResult.rows[0].role_id,
+                userResult.rows[0].id,
                 world_id])
+            
             return result.rows[0] || null
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            throw new Error(err.message)
         }
     }
     /**
@@ -177,17 +214,39 @@ export class WorldModel{
      * @param updateCoords updated fields for coords
      * @returns The updated coords, null if not found
      */
-    async updateCoords(world_coord_id: number, updateCoords: Partial<WorldCoords>): Promise<WorldCoords>{
+    async updateCoords(world_coord_name: string, updateCoords: Partial<WorldCoords>): Promise<WorldCoords>{
+        const existingCoords = await this.pool.query(`SELECT world_id FROM world_coords WHERE name = $1;`, [world_coord_name])
+        if(!existingCoords.rows[0]){
+            throw new Error("COORDS_NOT_FOUND")
+        }
         const filteredData = Object.fromEntries(
             Object.entries(updateCoords)
             .filter(([key, value])=> value !== undefined && value !== null && value !== '' && key !== 'world_coord_id' && key !== 'world_id'))
-        const fields = Object.values(filteredData).map((key, index)=> `${key} = $${index + 2}`).join(", ") ;
+       
+        if(filteredData.name){
+            const checkConflit = await this.pool.query("SELECT * FROM world_coords WHERE name = $1 AND world_id = $2;", 
+                [filteredData.name, existingCoords.rows[0].world_id])
+            if(checkConflit.rows[0]){
+                throw new Error("DUPE_NAME")
+            }
+        }
+        const fields = Object.entries(filteredData).map(([key], index)=> `${key} = $${index + 3}`).join(", ") ;
         try{
-            const result = await this.pool.query(`UPDATE worlds SET ${fields} WHERE world_coord_id = $1 RETURNING *;`, [world_coord_id, ...Object.values(filteredData)])
-            return result.rows[0] || null
+            const result = await this.pool.query(`UPDATE world_coords 
+                SET ${fields} 
+                WHERE name = $1 AND world_id = $2 
+                RETURNING *;`, 
+                [world_coord_name.trim(), 
+                    existingCoords.rows[0].world_id,
+                    ...Object.values(filteredData)])
+                if(result.rows[0]){
+                    await this.updateWorldData(existingCoords.rows[0].world_id, {})
+                    return result.rows[0]
+                }
+                return null
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            throw new Error(err.message)
         }
     }
     /**
@@ -214,13 +273,17 @@ export class WorldModel{
         if(userRoleQuery.role_name == "ADMIN"){
             throw new Error("CANT_REMOVE_ADMIN")
         }
+        const userResult = await this.pool.query("SELECT id FROM users WHERE email = $1", [userRoleQuery.user_email]);
+        if (userResult.rowCount === 0) {
+            throw new Error("USER_NOT_FOUND");
+        }
         try{
-            const result = await this.pool.query("DELETE FROM user_world_roles WHERE world_id = $1 AND user_id = (SELECT u.id from users WHERE u.user_email = $2) RETURNING *;", 
-                [world_id, userRoleQuery.user_email])
+            const result = await this.pool.query("DELETE FROM user_world_roles WHERE world_id = $1 AND user_id = $2 RETURNING *;", 
+                [world_id, userResult.rows[0].id])
             return result.rowCount > 0;
         }catch(err){
             console.log(err)
-            throw new Error("SERVER_ERROR")
+            throw new Error(err.message)
         }
     }
     /**
@@ -228,9 +291,16 @@ export class WorldModel{
      * @param world_coord_id id relating to coords
      * @returns A boolean if the coords has been removed or not
      */
-    async deleteCoords(world_coord_id: number){
+    async deleteCoords(world_coord_name: string){
+        const existingCoords = await this.pool.query(`SELECT world_id FROM world_coords WHERE name = $1;`, [world_coord_name])
+        if(!existingCoords.rows[0]){
+            throw new Error("COORDS_NOT_FOUND")
+        }
         try{
-            const result = await this.pool.query("DELETE FROM world_coords WHERE world_coord_id = $1 RETURNING *", [world_coord_id ])
+            const result = await this.pool.query(`DELETE FROM world_coords 
+                WHERE world_coord_name = $1 
+                AND world_id = $2
+                RETURNING *`, [world_coord_name, existingCoords.rows[0].world_id])
             return result.rowCount > 0;
         }catch(err){
             console.log(err)

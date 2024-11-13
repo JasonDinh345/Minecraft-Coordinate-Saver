@@ -43,14 +43,19 @@ export class WorldController{
         const world_id = parseInt(req.params.id)
         try{
             const users : { username: string, role_name: string }[] = await this.worldModel.getAllUsersInAWorld(world_id)
-            if(users){
-                res.status(200).json(users)
-            }else{
-                res.status(404).json({message:`Can't find world with ID: ${world_id}`})
-            }
+            
+            res.status(200).json(users)
+            
         }catch(err){
-            console.log(err)
-            res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
+            switch(err.message){
+                case "INVALID_ID":
+                    res.status(404).json({message:`Can't find world with ID: ${world_id}`})
+                    break;
+                default:
+                    res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
+                    break;
+            }
+            
         }
 
     }
@@ -63,13 +68,18 @@ export class WorldController{
         const world_id = parseInt(req.params.id)
         try{
             const coords : WorldCoords[] = await this.worldModel.getAllCoordsInAWorld(world_id)
-            if(coords){
-                res.status(200).json(coords)
-            }else{
-                res.status(404).json({message:`Can't find world with ID: ${world_id}`})
-            }
+            
+            res.status(200).json(coords)
+            
         }catch(err){
-            res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
+            switch(err.message){
+                case "INVALID_ID":
+                    res.status(404).json({message:`Can't find world with ID: ${world_id}`})
+                    break;
+                default:
+                    res.status(500).json({message: `Unexpected server error while getting world with ID: ${world_id}`})
+                    break;
+            }
         }
     }
     /**
@@ -109,15 +119,19 @@ export class WorldController{
             if(userRoleQuery){
                 res.status(201).json({message: "Successfull added user to server!"})
             }else{
-                res.status(500).json({message: `Unexpected server error while adding user to world`})
+                res.status(403).json({message: `User is already in the world` })
             }
         }catch(err){
-            if(err.code == 23503){
-                res.status(404).json(`Couldn't find a user, world, or role with given IDs`)
-            }
+            console.log(err)
             switch(err.message){
-                case "NULL_IDS":
-                    res.status(400).json({message: "IDs must be not null"})
+                case "INVALID_FIELDS":
+                    res.status(400).json({message: `Fields can't be empty` })
+                    break;
+                case "USER_NOT_FOUND":
+                    res.status(404).json({message: `Can't find user with email: ${req.body.user_email}` })
+                    break;
+                case "ROLE_NOT_FOUND":
+                     res.status(404).json({message: `Can't find role with name: ${req.body.role_name}` })
                     break;
                 default:
                     res.status(500).json({message: `Unexpected server error while adding user to world`})
@@ -137,15 +151,15 @@ export class WorldController{
             if(coords){
                 res.status(201).json(coords)
             }else{
-                res.status(500).json({message: `Unexpected server error while adding coords to world`})
+                res.status(403).json({message: `Coords already exist with name: ${req.body.name}`})
             }
         }catch(err){
-            if(err.code == 23503){
-                res.status(404).json(`Couldn't find world with ID: ${world_id}`)
-            }
             switch(err.message){
                 case "INVALID_FIELDS":
                     res.status(400).json({message: "Fields must be not null"})
+                    break;
+                case "INVALID_ID":
+                    res.status(404).json(`Couldn't find world with ID: ${world_id}`)
                     break;
                 default:
                     res.status(500).json({message: `Unexpected server error while adding coords to world`})
@@ -187,40 +201,49 @@ export class WorldController{
             if(userWorldRole){
                 res.status(200).json(userWorldRole)
             }else{
+                
                 res.status(404).json(`Couldn't find a user, world, or role with given IDs`)
             }
         }catch(err){
-            if(err.code == 23503){
-                res.status(404).json(`Couldn't find a user, world, or role with given IDs`)
-            }
-            console.log(err)
             switch(err.message){
-                
-                case "NULL_IDS":
-                    res.status(400).json({message: "IDs must be not null"})
+                case "INVALID_FIELDS":
+                    res.status(400).json({message: `Fields can't be empty` })
+                    break;
+                case "USER_NOT_FOUND":
+                    res.status(404).json({message: `Can't find user with email: ${req.body.user_email}` })
+                    break;
+                case "ROLE_NOT_FOUND":
+                     res.status(404).json({message: `Can't find role with name: ${req.body.role_name}` })
                     break;
                 default:
-                    res.status(500).json({message: `Unexpected server error while updating user role`})
+                    res.status(500).json({message: `Unexpected server error while adding user to world`})
                     break
             } 
         }
     }
     /**
      * Sends the updated coords from a given world
-     * @param req Contains id from the url relating to coords, and fields containing the updated coordinates
+     * @param req Contains name from the url relating to coords, and fields containing the updated coordinates
      * @param res Sends the updated coords from a given world, unless and error occured
      */
     async updateCoords(req : Request, res: Response): Promise<void>{
-        const world_coord_id = parseInt(req.params.id)
+        
         try{
-            const coords : WorldCoords = await this.worldModel.updateCoords(world_coord_id, req.body)
+            const coords : WorldCoords = await this.worldModel.updateCoords(req.params.name, req.body)
             if(coords){
                 res.status(200).json(coords)
             }else{
-                res.status(404).json(`Couldn't find coordnates with ID: ${world_coord_id}`)
+                res.status(500).json({message: `Unexpected server error while updating coords to a world`})
             }
         }catch(err){
+            console.log(err)
             switch(err.message){
+                case "DUPE_NAME":
+                    res.status(403).json(`Name already taken in world: ${req.params.name}`)
+                    break;
+                case "COORDS_NOT_FOUND":
+                    res.status(404).json(`Couldn't find coordnates with name: ${req.params.name}`)
+                    break
                 default:
                     res.status(500).json({message: `Unexpected server error while updating coords to a world`})
                     break
@@ -262,12 +285,16 @@ export class WorldController{
             if(hasDeleted){
                 res.status(204).json({message: "Removed User"})
             }else{
-                res.status(404).json(`Can't find user in given world!`)
+                res.status(404).json(`Can't find world with ID: ${world_id}`)
             }
         }catch(err){
             switch(err.message){
+                case "USER_NOT_FOUND":
+                    res.status(404).json(`Can't find user in given world with email: ${req.body.user_email}`)
+                    break
                 case "CANT_REMOVE_ADMIN":
                     res.status(403).json({message: "Can't remove an admin unless you delete the world!"})
+                    break
                 default:
                     res.status(500).json({message: `Unexpected server error while removing a user from a world`})
                     break
@@ -276,17 +303,17 @@ export class WorldController{
     }
     /**
      * Sends a message of the result of the deletion
-     * @param req Contains id from the url relating to coords
+     * @param req Contains name from the url relating to coords
      * @param res Sends a message of the result of the deletion
      */
     async deleteCoords(req : Request, res: Response): Promise<void>{
-        const world_coord_id = parseInt(req.params.id)
+        
         try{
-            const hasDeleted : boolean = await this.worldModel.deleteCoords(world_coord_id)
+            const hasDeleted : boolean = await this.worldModel.deleteCoords(req.params.name)
             if(hasDeleted){
                 res.status(204).json({message: "Deleted Coords"})
             }else{
-                res.status(404).json(`Couldn't find coordnates with ID: ${world_coord_id}`)
+                res.status(404).json(`Couldn't find coordnates with name: ${req.params.name}`)
             }
         }catch(err){
             switch(err.message){

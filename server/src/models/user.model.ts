@@ -31,15 +31,16 @@ async getUserByEmail(email :string): Promise<User | null>{
  * @returns an array of worlds that the user is apart of 
  */
 async getAllWorldsMatchingUser(user_id :number): Promise<World[]>{
-    
+    const checkIdResult = await this.pool.query("SELECT 1 FROM users WHERE id = $1", [user_id]);
+        if (checkIdResult.rowCount === 0) {
+            throw new Error("INVALID_ID");
+        }
     try{
         const result = await this.pool.query("SELECT w.id, w.name, w.created_at, w.last_updated, w.seed " +  
             "FROM user_world_roles usr " +
             "JOIN worlds w ON usr.world_id = w.id " +
             "JOIN users u ON usr.user_id = u.id WHERE u.id = $1;", [user_id])
-        if (result.rows.length === 0) {
-            return null
-        }
+
         return result.rows
     }catch(err){
         throw new Error("SERVER_ERROR")

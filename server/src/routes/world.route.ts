@@ -42,7 +42,7 @@ worldRouter.patch("/user/:id",worldController.updateUserRole.bind(worldControlle
 /**
  * Update coords on given world
  */
-worldRouter.patch("/coords/:id", worldController.updateCoords.bind(worldController))
+worldRouter.patch("/coords/:name", worldController.updateCoords.bind(worldController))
 /**
  * Deletes world
  */
@@ -54,5 +54,5 @@ worldRouter.delete("/user/:id",worldController.removeUserFromWorld.bind(worldCon
 /**
  * Removes coords from world
  */
-worldRouter.delete("/coords/:id",worldController.deleteCoords.bind(worldController))
+worldRouter.delete("/coords/:name",worldController.deleteCoords.bind(worldController))
 export default worldRouter;

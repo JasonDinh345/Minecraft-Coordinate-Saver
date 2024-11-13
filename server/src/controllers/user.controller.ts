@@ -52,7 +52,6 @@ export class UserController{
             const user: User | null = await this.userModel.getUserByEmail(req.user.email)
             if(!user){
                 res.status(404).json({message:`Couldn't find user with email: ${req.user.email}`})
-                
             }else{
                 res.status(200).json(user)
             }
@@ -66,14 +65,12 @@ export class UserController{
         const id = parseInt(req.params.id)   
         try{
             const worlds: World[] | null = await this.userModel.getAllWorldsMatchingUser(id)
-            if(!worlds){
-                res.status(404).json({message:`Couldn't find user with ID: ${id}`})
-                
-            }else{
                 res.status(200).json(worlds)
-            }
         }catch(err){
             switch(err.message){
+                case "INVALID_ID":
+                    res.status(404).json({message:`Couldn't find user with ID: ${id}`})
+                    break;
                 default:
                     res.status(500).json({message: "Unexpected server error has occured!"})
                     break;
