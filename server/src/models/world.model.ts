@@ -210,14 +210,15 @@ export class WorldModel{
     }
     /**
      * Updates the coordinates from a world
-     * @param world_coord_id id relating to coords
+     * @param world_id id relating to a world
+     * @param world_coord_name name relating to coords
      * @param updateCoords updated fields for coords
      * @returns The updated coords, null if not found
      */
-    async updateCoords(world_coord_name: string, updateCoords: Partial<WorldCoords>): Promise<WorldCoords>{
-        const existingCoords = await this.pool.query(`SELECT world_id FROM world_coords WHERE name = $1;`, [world_coord_name])
-        if(!existingCoords.rows[0]){
-            throw new Error("COORDS_NOT_FOUND")
+    async updateCoords(world_id: number, world_coord_name: string, updateCoords: Partial<WorldCoords>): Promise<WorldCoords>{
+        const checkWorld = await this.getWorld(world_id)
+        if(!checkWorld){
+            throw new Error("WORLD_NOT_FOUND")
         }
         const filteredData = Object.fromEntries(
             Object.entries(updateCoords)
@@ -225,7 +226,7 @@ export class WorldModel{
        
         if(filteredData.name){
             const checkConflit = await this.pool.query("SELECT * FROM world_coords WHERE name = $1 AND world_id = $2;", 
-                [filteredData.name, existingCoords.rows[0].world_id])
+                [filteredData.name, world_id])
             if(checkConflit.rows[0]){
                 throw new Error("DUPE_NAME")
             }
@@ -237,10 +238,10 @@ export class WorldModel{
                 WHERE name = $1 AND world_id = $2 
                 RETURNING *;`, 
                 [world_coord_name.trim(), 
-                    existingCoords.rows[0].world_id,
+                world_id,
                     ...Object.values(filteredData)])
                 if(result.rows[0]){
-                    await this.updateWorldData(existingCoords.rows[0].world_id, {})
+                    await this.updateWorldData(world_id, {})
                     return result.rows[0]
                 }
                 return null
@@ -266,7 +267,7 @@ export class WorldModel{
     /**
      * Removes a user from a world 
      * @param world_id id relating to a world
-     * @param userWorldRoles user, role,
+     * @param userRoleQuery contains user email and role
      * @returns A boolean if the user has been removed or not
      */
     async removeUserFromWorld(world_id: number, userRoleQuery: UserRoleQuery):  Promise<boolean>{
@@ -288,19 +289,20 @@ export class WorldModel{
     }
     /**
      * Removes coords from a world
-     * @param world_coord_id id relating to coords
+     * @param world_coord_name name relating to coords
+     * @param world_id id relating to a world
      * @returns A boolean if the coords has been removed or not
      */
-    async deleteCoords(world_coord_name: string){
-        const existingCoords = await this.pool.query(`SELECT world_id FROM world_coords WHERE name = $1;`, [world_coord_name])
-        if(!existingCoords.rows[0]){
-            throw new Error("COORDS_NOT_FOUND")
+    async deleteCoords(world_id: number, world_coord_name: string){
+        const checkWorld = await this.getWorld(world_id)
+        if(!checkWorld){
+            throw new Error("WORLD_NOT_FOUND")
         }
         try{
             const result = await this.pool.query(`DELETE FROM world_coords 
-                WHERE world_coord_name = $1 
+                WHERE name = $1 
                 AND world_id = $2
-                RETURNING *`, [world_coord_name, existingCoords.rows[0].world_id])
+                RETURNING *`, [world_coord_name, world_id])
             return result.rowCount > 0;
         }catch(err){
             console.log(err)

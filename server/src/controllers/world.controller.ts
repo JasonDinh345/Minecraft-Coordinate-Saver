@@ -223,27 +223,27 @@ export class WorldController{
     }
     /**
      * Sends the updated coords from a given world
-     * @param req Contains name from the url relating to coords, and fields containing the updated coordinates
+     * @param req Contains name and world id from the url relating to coords, and fields containing the updated coordinates
      * @param res Sends the updated coords from a given world, unless and error occured
      */
     async updateCoords(req : Request, res: Response): Promise<void>{
-        
+        const world_id = parseInt(req.params.id)
         try{
-            const coords : WorldCoords = await this.worldModel.updateCoords(req.params.name, req.body)
+            const coords : WorldCoords = await this.worldModel.updateCoords(world_id, req.params.name, req.body)
             if(coords){
                 res.status(200).json(coords)
             }else{
-                res.status(500).json({message: `Unexpected server error while updating coords to a world`})
+                res.status(404).json(`Couldn't find coordnates with name: ${req.params.name}`)
             }
         }catch(err){
             console.log(err)
             switch(err.message){
+                case "WORLD_NOT_FOUND":
+                    res.status(404).json(`Couldn't find world with id: ${world_id}`)
+                    break
                 case "DUPE_NAME":
                     res.status(403).json(`Name already taken in world: ${req.params.name}`)
                     break;
-                case "COORDS_NOT_FOUND":
-                    res.status(404).json(`Couldn't find coordnates with name: ${req.params.name}`)
-                    break
                 default:
                     res.status(500).json({message: `Unexpected server error while updating coords to a world`})
                     break
@@ -303,21 +303,23 @@ export class WorldController{
     }
     /**
      * Sends a message of the result of the deletion
-     * @param req Contains name from the url relating to coords
+     * @param req Contains name and world id from the url relating to coords
      * @param res Sends a message of the result of the deletion
      */
     async deleteCoords(req : Request, res: Response): Promise<void>{
-        
+        const world_id = parseInt(req.params.id)
         try{
-            const hasDeleted : boolean = await this.worldModel.deleteCoords(req.params.name)
+            const hasDeleted : boolean = await this.worldModel.deleteCoords(world_id, req.params.name)
             if(hasDeleted){
                 res.status(204).json({message: "Deleted Coords"})
             }else{
-                res.status(404).json(`Couldn't find coordnates with name: ${req.params.name}`)
+                res.status(404).json({message: `Couldn't find coordnates with from world with name: ${req.body.coord_name}`})
             }
         }catch(err){
             switch(err.message){
-            
+                case "WORLD_NOT_FOUND":
+                    res.status(404).json(`Couldn't find coordnates with from world: ${world_id}`)
+                    break;
                 default:
                     res.status(500).json({message: `Unexpected server error while deleting coords`})
                     break

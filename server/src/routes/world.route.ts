@@ -8,51 +8,51 @@ const worldController: WorldController = new WorldController(worldModel);
 
 const worldRouter : Router = Router();
 /**
- * Get a world's data
+ * GET request to retrieve a world's data 
  */
 worldRouter.get("/:id" ,worldController.getWorld.bind(worldController))
 /**
- * Get all users in a world
+ * GET request to retrieve all users in a world
  */
 worldRouter.get("/users/:id",worldController.getAllUsersInAWorld.bind(worldController))
 /**
- * Get all coords in a world
+ * GET request to retrieve all coords in a world
  */
 worldRouter.get("/coords/:id",worldController.getAllCoordsInAWorld.bind(worldController))
 /**
- * Create new world
+ * POST request to create a new world
  */
 worldRouter.post("/", worldController.createNewWorld.bind(worldController))
 /**
- * Add user to world
+ * POST request to add user to world
  */
 worldRouter.post("/user/:id", worldController.addUserToWorld.bind(worldController))
 /**
- * Add coords to world
+ * POST request to add coords to world
  */
 worldRouter.post("/coords/:id",worldController.addNewCoordToWorld.bind(worldController))
 /**
- * Update world data
+ * PATCH request to update world data
  */
 worldRouter.patch("/:id",worldController.updateWorldData.bind(worldController))
 /**
- * Update user role on given world
+ * PATCH request to update user role on given world
  */
 worldRouter.patch("/user/:id",worldController.updateUserRole.bind(worldController))
 /**
- * Update coords on given world
+ * PATCH request to update coords on given world
  */
-worldRouter.patch("/coords/:name", worldController.updateCoords.bind(worldController))
+worldRouter.patch("/coords/:id/:name", worldController.updateCoords.bind(worldController))
 /**
- * Deletes world
+ * DELETE request to delete a world, along with its relations 
  */
 worldRouter.delete("/:id",worldController.deleteWorld.bind(worldController))
 /**
- * Removes user from world
+ * DELETE request to removes a user from world
  */
 worldRouter.delete("/user/:id",worldController.removeUserFromWorld.bind(worldController))
 /**
- * Removes coords from world
+ * DELETE request to removes coords from world
  */
-worldRouter.delete("/coords/:name",worldController.deleteCoords.bind(worldController))
+worldRouter.delete("/coords/:id/:name",worldController.deleteCoords.bind(worldController))
 export default worldRouter;
